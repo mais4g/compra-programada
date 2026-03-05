@@ -1,0 +1,18 @@
+namespace CompraProgramada.Domain;
+
+public static class ErrorCodes
+{
+    public const string ClienteNaoEncontrado = "CLIENTE_NAO_ENCONTRADO";
+    public const string ClienteCpfDuplicado = "CLIENTE_CPF_DUPLICADO";
+    public const string ClienteJaInativo = "CLIENTE_JA_INATIVO";
+    public const string CestaNaoEncontrada = "CESTA_NAO_ENCONTRADA";
+    public const string CotacaoNaoEncontrada = "COTACAO_NAO_ENCONTRADA";
+    public const string CompraJaExecutada = "COMPRA_JA_EXECUTADA";
+    public const string DataCompraInvalida = "DATA_COMPRA_INVALIDA";
+    public const string SemClientesAtivos = "SEM_CLIENTES_ATIVOS";
+    public const string QuantidadeAtivosInvalida = "QUANTIDADE_ATIVOS_INVALIDA";
+    public const string PercentualZeroOuNegativo = "PERCENTUAL_ZERO_OU_NEGATIVO";
+    public const string PercentuaisInvalidos = "PERCENTUAIS_INVALIDOS";
+    public const string TickersDuplicados = "TICKERS_DUPLICADOS";
+    public const string ErroInterno = "ERRO_INTERNO";
+}
