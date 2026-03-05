@@ -1,0 +1,35 @@
+namespace CompraProgramada.Application.DTOs.Responses;
+
+public class CestaResponse
+{
+    public int CestaId { get; set; }
+    public string Nome { get; set; } = string.Empty;
+    public bool Ativa { get; set; }
+    public DateTime DataCriacao { get; set; }
+    public DateTime? DataDesativacao { get; set; }
+    public List<CestaItemResponse> Itens { get; set; } = new();
+    public CestaDesativadaResponse? CestaAnteriorDesativada { get; set; }
+    public bool RebalanceamentoDisparado { get; set; }
+    public List<string>? AtivosRemovidos { get; set; }
+    public List<string>? AtivosAdicionados { get; set; }
+    public string Mensagem { get; set; } = string.Empty;
+}
+
+public class CestaItemResponse
+{
+    public string Ticker { get; set; } = string.Empty;
+    public decimal Percentual { get; set; }
+    public decimal? CotacaoAtual { get; set; }
+}
+
+public class CestaDesativadaResponse
+{
+    public int CestaId { get; set; }
+    public string Nome { get; set; } = string.Empty;
+    public DateTime DataDesativacao { get; set; }
+}
+
+public class CestaHistoricoResponse
+{
+    public List<CestaResponse> Cestas { get; set; } = new();
+}
