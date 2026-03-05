@@ -1,0 +1,54 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+*.vs/
+.vs/
+*.DotSettings.user
+
+## IDE
+.idea/
+.vscode/
+
+## Build
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+build/
+bld/
+
+## NuGet
+*.nupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+
+## Test Results
+TestResults/
+*.trx
+
+## OS
+Thumbs.db
+.DS_Store
+
+## Frontend build artifacts
+frontend/tsconfig.tsbuildinfo
+frontend/dist/
+node_modules/
+
+## Arquivos internos (nao sobem para o repositorio)
+CONFORMIDADE.md
+GUIA_ESTUDO.md
+ROTEIRO_VIDEO.md
+PLANO_COMMITS.md
+*.http
+.gitkeep
+cotacoes/*.ZIP
+
+## Misc
+*.log
+*.swp
+*~
+## Claude
+.claude/
