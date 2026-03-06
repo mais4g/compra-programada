@@ -10,6 +10,11 @@ public class KafkaProducerService : IKafkaProducerService, IDisposable
     private const string TopicIRDedoDuro = "ir-dedo-duro";
     private const string TopicIRVenda = "ir-venda";
 
+    private static readonly JsonSerializerOptions SerializerOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
     private readonly IProducer<string, string> _producer;
     private readonly ILogger<KafkaProducerService> _logger;
 
@@ -27,22 +32,32 @@ public class KafkaProducerService : IKafkaProducerService, IDisposable
         _producer = new ProducerBuilder<string, string>(config).Build();
     }
 
-    public async Task PublicarIRDedoDuroAsync(object mensagem)
+    public async Task PublicarIRDedoDuroAsync(object payload, string partitionKey)
     {
-        await PublicarAsync(TopicIRDedoDuro, mensagem);
+        await PublicarAsync(TopicIRDedoDuro, payload, partitionKey);
     }
 
-    public async Task PublicarIRVendaAsync(object mensagem)
+    public async Task PublicarIRVendaAsync(object payload, string partitionKey)
     {
-        await PublicarAsync(TopicIRVenda, mensagem);
+        await PublicarAsync(TopicIRVenda, payload, partitionKey);
     }
 
-    private async Task PublicarAsync(string topico, object mensagem)
+    private async Task PublicarAsync(string topico, object payload, string partitionKey)
     {
-        var json = JsonSerializer.Serialize(mensagem, new JsonSerializerOptions
+        // Envelope padrão para produção:
+        // - eventId: identificador único para deduplicação pelo consumidor
+        // - schemaVersion: permite evoluir o contrato sem quebrar consumidores antigos
+        // - partitionKey (Kafka Message.Key): garante que eventos do mesmo cliente
+        //   vão para a mesma partição, preservando a ordem de processamento
+        var envelope = new
         {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        });
+            eventId = Guid.NewGuid().ToString(),
+            schemaVersion = "1",
+            timestampUtc = DateTime.UtcNow,
+            payload
+        };
+
+        var json = JsonSerializer.Serialize(envelope, SerializerOptions);
 
         const int maxRetries = 3;
         for (int tentativa = 1; tentativa <= maxRetries; tentativa++)
@@ -51,13 +66,13 @@ public class KafkaProducerService : IKafkaProducerService, IDisposable
             {
                 var result = await _producer.ProduceAsync(topico, new Message<string, string>
                 {
-                    Key = Guid.NewGuid().ToString(),
+                    Key = partitionKey,
                     Value = json
                 });
 
                 _logger.LogInformation(
-                    "Mensagem publicada no tópico {Topico} - Offset: {Offset}",
-                    topico, result.Offset);
+                    "Mensagem publicada no tópico {Topico} - Partition: {Partition} Offset: {Offset}",
+                    topico, result.Partition.Value, result.Offset);
                 return;
             }
             catch (ProduceException<string, string> ex)

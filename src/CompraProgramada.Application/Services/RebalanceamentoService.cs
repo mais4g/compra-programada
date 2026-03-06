@@ -1,3 +1,4 @@
+using CompraProgramada.Application.Events;
 using CompraProgramada.Application.Interfaces;
 using CompraProgramada.Domain;
 using CompraProgramada.Domain.Entities;
@@ -333,28 +334,23 @@ public class RebalanceamentoService : IRebalanceamentoService
 
         try
         {
-            await _kafkaProducer.PublicarIRVendaAsync(new
-            {
-                tipo = "IR_VENDA",
-                clienteId = cliente.Id,
-                cpf = cliente.Cpf,
-                mesReferencia = agora.ToString("yyyy-MM"),
-                totalVendasMes = totalVendasMes,
-                lucroLiquido = lucroTotalMes,
-                aliquota = totalVendasMes > RegrasFinanceiras.LimiteIsencaoIR ? RegrasFinanceiras.AliquotaIRVenda : 0m,
-                valorIR = valorIR,
-                detalhes = operacoes
-                    .Where(o => o.TipoOperacao == TipoOperacao.Venda)
-                    .Select(o => new
-                    {
-                        ticker = o.Ticker,
-                        quantidade = o.Quantidade,
-                        precoVenda = o.PrecoUnitario,
-                        precoMedio = o.PrecoMedio,
-                        lucro = o.Lucro
-                    }),
-                dataCalculo = agora
-            });
+            var detalhes = operacoes
+                .Where(o => o.TipoOperacao == TipoOperacao.Venda)
+                .Select(o => new DetalheVendaIR(o.Ticker, o.Quantidade, o.PrecoUnitario, o.PrecoMedio, o.Lucro));
+
+            var evento = new IrVendaEventV1(
+                Tipo: "IR_VENDA",
+                ClienteId: cliente.Id,
+                Cpf: cliente.Cpf,
+                MesReferencia: agora.ToString("yyyy-MM"),
+                TotalVendasMes: totalVendasMes,
+                LucroLiquido: lucroTotalMes,
+                Aliquota: totalVendasMes > RegrasFinanceiras.LimiteIsencaoIR ? RegrasFinanceiras.AliquotaIRVenda : 0m,
+                ValorIR: valorIR,
+                Detalhes: detalhes,
+                DataCalculo: agora
+            );
+            await _kafkaProducer.PublicarIRVendaAsync(evento, partitionKey: cliente.Id.ToString());
         }
         catch (Exception ex)
         {

@@ -1,4 +1,5 @@
 using CompraProgramada.Application.DTOs.Responses;
+using CompraProgramada.Application.Events;
 using CompraProgramada.Application.Interfaces;
 using CompraProgramada.Domain;
 using CompraProgramada.Domain.Entities;
@@ -275,20 +276,20 @@ public class MotorCompraService : IMotorCompraService
     {
         try
         {
-            await _kafkaProducer.PublicarIRDedoDuroAsync(new
-            {
-                tipo = "IR_DEDO_DURO",
-                clienteId = cliente.Id,
-                cpf = cliente.Cpf,
-                ticker,
-                tipoOperacao = "COMPRA",
-                quantidade,
-                precoUnitario = cotacao,
-                valorOperacao,
-                aliquota = RegrasFinanceiras.TaxaIRDedoDuro,
-                valorIR = irDedoDuro,
-                dataOperacao = DateTime.UtcNow
-            });
+            var evento = new IrDedoDuroEventV1(
+                Tipo: "IR_DEDO_DURO",
+                ClienteId: cliente.Id,
+                Cpf: cliente.Cpf,
+                Ticker: ticker,
+                TipoOperacao: "COMPRA",
+                Quantidade: quantidade,
+                PrecoUnitario: cotacao,
+                ValorOperacao: valorOperacao,
+                Aliquota: RegrasFinanceiras.TaxaIRDedoDuro,
+                ValorIR: irDedoDuro,
+                DataOperacao: DateTime.UtcNow
+            );
+            await _kafkaProducer.PublicarIRDedoDuroAsync(evento, partitionKey: cliente.Id.ToString());
             return 1;
         }
         catch (Exception ex)

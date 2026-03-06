@@ -137,7 +137,7 @@ public class RebalanceamentoServiceTests
         await _service.ExecutarRebalanceamentoPorMudancaCestaAsync(1, 2);
 
         // Venda de ATIVO_CARO = 100 * 210 = R$ 21.000 > R$ 20.000 e lucro > 0
-        _kafkaMock.Verify(k => k.PublicarIRVendaAsync(It.IsAny<object>()), Times.Once);
+        _kafkaMock.Verify(k => k.PublicarIRVendaAsync(It.IsAny<object>(), It.IsAny<string>()), Times.Once);
     }
 
     [Fact]
@@ -367,7 +367,7 @@ public class RebalanceamentoServiceTests
         await _service.ExecutarRebalanceamentoPorDesvioAsync(1);
 
         // IR deve ter sido publicado (vendas totais > R$20k e lucro total > 0)
-        _kafkaMock.Verify(k => k.PublicarIRVendaAsync(It.IsAny<object>()), Times.Once);
+        _kafkaMock.Verify(k => k.PublicarIRVendaAsync(It.IsAny<object>(), It.IsAny<string>()), Times.Once);
     }
 
     private static CestaTopFive CriarCesta(int id, (string ticker, decimal percentual)[] itens)

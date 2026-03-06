@@ -2,6 +2,6 @@ namespace CompraProgramada.Domain.Interfaces.Services;
 
 public interface IKafkaProducerService
 {
-    Task PublicarIRDedoDuroAsync(object mensagem);
-    Task PublicarIRVendaAsync(object mensagem);
+    Task PublicarIRDedoDuroAsync(object payload, string partitionKey);
+    Task PublicarIRVendaAsync(object payload, string partitionKey);
 }

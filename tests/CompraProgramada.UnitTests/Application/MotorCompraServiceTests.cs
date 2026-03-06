@@ -171,7 +171,7 @@ public class MotorCompraServiceTests
                 { "BBDC4", 15m }, { "WEGE3", 40m }
             });
 
-        _kafkaMock.Setup(k => k.PublicarIRDedoDuroAsync(It.IsAny<object>()))
+        _kafkaMock.Setup(k => k.PublicarIRDedoDuroAsync(It.IsAny<object>(), It.IsAny<string>()))
             .ThrowsAsync(new Exception("Kafka offline"));
 
         var act = async () => await _service.ExecutarCompraAsync(new DateTime(2026, 2, 5));
