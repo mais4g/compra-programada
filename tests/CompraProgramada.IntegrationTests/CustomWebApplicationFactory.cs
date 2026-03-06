@@ -15,6 +15,10 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        // Usa o diretório do assembly de teste como content root para evitar
+        // dependência do caminho absoluto do projeto na máquina de build.
+        builder.UseContentRoot(AppContext.BaseDirectory);
+
         builder.ConfigureServices(services =>
         {
             // Remove TODAS as registracoes de DbContext do MySQL
