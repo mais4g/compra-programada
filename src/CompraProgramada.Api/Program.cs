@@ -63,6 +63,7 @@ try
 
     builder.Services.AddInfrastructure(builder.Configuration);
     builder.Services.AddApplicationServices();
+    builder.Services.AddHostedService<CompraProgramada.Api.BackgroundServices.CompraScheduler>();
 
     var rateLimitSection = builder.Configuration.GetSection("RateLimiting");
     builder.Services.AddRateLimiter(options =>
