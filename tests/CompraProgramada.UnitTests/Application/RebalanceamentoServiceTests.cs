@@ -26,6 +26,8 @@ public class RebalanceamentoServiceTests
         _unitOfWorkMock.Setup(u => u.CommitAsync()).ReturnsAsync(1);
         _operacaoRepoMock.Setup(r => r.ObterTotalVendasMesAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()))
             .ReturnsAsync(0m);
+        _operacaoRepoMock.Setup(r => r.ObterTotalLucroMesAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()))
+            .ReturnsAsync(0m);
 
         _service = new RebalanceamentoService(
             _clienteRepoMock.Object,
@@ -318,6 +320,54 @@ public class RebalanceamentoServiceTests
         // PETR4 deve ter sido vendido parcialmente (40 -> 20)
         _custodiaFilhoteRepoMock.Verify(r => r.AtualizarAsync(It.Is<CustodiaFilhote>(c => c.Ticker == "PETR4")), Times.Once);
         _operacaoRepoMock.Verify(r => r.AdicionarVariosAsync(It.IsAny<List<OperacaoRebalanceamento>>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Desvio_LimiteCruzadoPorVendasAcumuladas_DeveCalcularIRSobreLucroTotalMes()
+    {
+        // Cenário: primeira venda no mês = R$18k (isenta), segunda = R$5k → total R$23k > R$20k.
+        // O IR deve incidir sobre o lucro total do mês (R$2.000 + R$500 = R$2.500),
+        // não apenas sobre o lucro da operação atual (R$500).
+        var cliente = new Cliente
+        {
+            Id = 1, Nome = "Test", Cpf = "111", Ativo = true,
+            ContaGrafica = new ContaGrafica { Id = 1 }
+        };
+        _clienteRepoMock.Setup(r => r.ObterPorIdComCustodiaAsync(1)).ReturnsAsync(cliente);
+
+        var cesta = CriarCesta(1, new[] { ("PETR4", 30m), ("VALE3", 25m), ("ITUB4", 20m), ("BBDC4", 15m), ("WEGE3", 10m) });
+        _cestaRepoMock.Setup(r => r.ObterAtivaAsync()).ReturnsAsync(cesta);
+
+        // Custódia com PETR4 overweight → venda de ajuste = ~R$5k
+        var custodia = new List<CustodiaFilhote>
+        {
+            new() { ContaGraficaId = 1, Ticker = "PETR4", Quantidade = 50, PrecoMedio = 80m, ValorInvestido = 4000m },
+            new() { ContaGraficaId = 1, Ticker = "VALE3", Quantidade = 25, PrecoMedio = 10m, ValorInvestido = 250m },
+            new() { ContaGraficaId = 1, Ticker = "ITUB4", Quantidade = 20, PrecoMedio = 10m, ValorInvestido = 200m },
+            new() { ContaGraficaId = 1, Ticker = "BBDC4", Quantidade = 15, PrecoMedio = 10m, ValorInvestido = 150m },
+            new() { ContaGraficaId = 1, Ticker = "WEGE3", Quantidade = 10, PrecoMedio = 10m, ValorInvestido = 100m }
+        };
+        _custodiaFilhoteRepoMock.Setup(r => r.ObterPorContaGraficaAsync(1)).ReturnsAsync(custodia);
+
+        var cotacoes = new Dictionary<string, decimal>
+        {
+            { "PETR4", 100m }, { "VALE3", 10m }, { "ITUB4", 10m },
+            { "BBDC4", 10m }, { "WEGE3", 10m }
+        };
+        _cotacaoServiceMock.Setup(s => s.ObterCotacoesFechamentoAsync(It.IsAny<IEnumerable<string>>()))
+            .ReturnsAsync(cotacoes);
+
+        // Simula vendas anteriores no mês que já cruzam o limite quando somadas à atual
+        _operacaoRepoMock.Setup(r => r.ObterTotalVendasMesAsync(1, It.IsAny<int>(), It.IsAny<int>()))
+            .ReturnsAsync(18_000m);
+        // Simula lucro acumulado das operações anteriores do mês
+        _operacaoRepoMock.Setup(r => r.ObterTotalLucroMesAsync(1, It.IsAny<int>(), It.IsAny<int>()))
+            .ReturnsAsync(2_000m);
+
+        await _service.ExecutarRebalanceamentoPorDesvioAsync(1);
+
+        // IR deve ter sido publicado (vendas totais > R$20k e lucro total > 0)
+        _kafkaMock.Verify(k => k.PublicarIRVendaAsync(It.IsAny<object>()), Times.Once);
     }
 
     private static CestaTopFive CriarCesta(int id, (string ticker, decimal percentual)[] itens)

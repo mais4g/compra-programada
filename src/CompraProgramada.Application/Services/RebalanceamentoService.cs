@@ -317,10 +317,17 @@ public class RebalanceamentoService : IRebalanceamentoService
             .ObterTotalVendasMesAsync(cliente.Id, agora.Year, agora.Month);
         var totalVendasMes = vendasAnteriores + totalVendas;
 
+        // Lucro acumulado do mês: inclui operações anteriores + operação atual.
+        // Necessário porque ao cruzar o limite de isenção de R$20k, o IR incide
+        // sobre TODO o lucro do mês, não apenas o da operação que cruzou o limite.
+        var lucroAnterioresMes = await _operacaoRepository
+            .ObterTotalLucroMesAsync(cliente.Id, agora.Year, agora.Month);
+        var lucroTotalMes = lucroAnterioresMes + totalLucro;
+
         decimal valorIR = 0;
-        if (totalVendasMes > RegrasFinanceiras.LimiteIsencaoIR && totalLucro > 0)
+        if (totalVendasMes > RegrasFinanceiras.LimiteIsencaoIR && lucroTotalMes > 0)
         {
-            valorIR = Math.Round(totalLucro * RegrasFinanceiras.AliquotaIRVenda, 2);
+            valorIR = Math.Round(lucroTotalMes * RegrasFinanceiras.AliquotaIRVenda, 2);
         }
 
         try
@@ -332,7 +339,7 @@ public class RebalanceamentoService : IRebalanceamentoService
                 cpf = cliente.Cpf,
                 mesReferencia = agora.ToString("yyyy-MM"),
                 totalVendasMes = totalVendasMes,
-                lucroLiquido = totalLucro,
+                lucroLiquido = lucroTotalMes,
                 aliquota = totalVendasMes > RegrasFinanceiras.LimiteIsencaoIR ? RegrasFinanceiras.AliquotaIRVenda : 0m,
                 valorIR = valorIR,
                 detalhes = operacoes

@@ -33,4 +33,14 @@ public class OperacaoRebalanceamentoRepository : IOperacaoRebalanceamentoReposit
                 && o.DataOperacao.Month == mes)
             .SumAsync(o => o.Quantidade * o.PrecoUnitario);
     }
+
+    public async Task<decimal> ObterTotalLucroMesAsync(int clienteId, int ano, int mes)
+    {
+        return await _context.OperacoesRebalanceamento
+            .Where(o => o.ClienteId == clienteId
+                && o.TipoOperacao == Domain.Enums.TipoOperacao.Venda
+                && o.DataOperacao.Year == ano
+                && o.DataOperacao.Month == mes)
+            .SumAsync(o => o.Lucro);
+    }
 }
