@@ -66,14 +66,23 @@ public class MotorCompraService : IMotorCompraService
         var (ordensItens, quantidadesDisponiveis) = await CriarOrdensCompraAsync(
             cesta, totalConsolidado, cotacoes, saldosMaster);
 
-        var ordemCompra = await PersistirOrdemCompraAsync(dataCompra, totalConsolidado, clientesAtivos.Count, ordensItens);
+        List<DistribuicaoClienteResponse> distribuicoesResponse = new();
+        List<ResiduoMasterResponse> residuosResponse = new();
+        var eventosIR = 0;
 
-        var (distribuicoesResponse, eventosIR) = await DistribuirAosClientesAsync(
-            aportesPorCliente, cesta, cotacoes, quantidadesDisponiveis, ordemCompra, totalConsolidado);
+        // Persiste a ordem e todas as distribuições atomicamente.
+        // Se qualquer etapa falhar, o banco retorna ao estado anterior — sem ordem sem distribuições.
+        await _unitOfWork.ExecuteInTransactionAsync(async () =>
+        {
+            var ordemCompra = await PersistirOrdemCompraAsync(dataCompra, totalConsolidado, clientesAtivos.Count, ordensItens);
 
-        var residuosResponse = await ProcessarResiduosMasterAsync(cesta, quantidadesDisponiveis, cotacoes, dataCompra);
+            (distribuicoesResponse, eventosIR) = await DistribuirAosClientesAsync(
+                aportesPorCliente, cesta, cotacoes, quantidadesDisponiveis, ordemCompra, totalConsolidado);
 
-        await _unitOfWork.CommitAsync();
+            residuosResponse = await ProcessarResiduosMasterAsync(cesta, quantidadesDisponiveis, cotacoes, dataCompra);
+
+            await _unitOfWork.CommitAsync();
+        });
 
         return MontarResponse(clientesAtivos.Count, totalConsolidado, ordensItens, distribuicoesResponse, residuosResponse, eventosIR);
     }

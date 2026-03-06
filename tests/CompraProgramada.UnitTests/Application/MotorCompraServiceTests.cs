@@ -26,6 +26,9 @@ public class MotorCompraServiceTests
     public MotorCompraServiceTests()
     {
         _unitOfWorkMock.Setup(u => u.CommitAsync()).ReturnsAsync(1);
+        // Executa o delegate real para que os testes exercitem a lógica interna da transação
+        _unitOfWorkMock.Setup(u => u.ExecuteInTransactionAsync(It.IsAny<Func<Task>>()))
+            .Returns((Func<Task> op) => op());
         _ordemCompraRepoMock.Setup(r => r.ObterPorDataReferenciaAsync(It.IsAny<DateTime>()))
             .ReturnsAsync((OrdemCompra?)null);
         _custodiaMasterRepoMock.Setup(r => r.ObterTodosAsync())
