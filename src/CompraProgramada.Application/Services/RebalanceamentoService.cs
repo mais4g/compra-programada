@@ -2,6 +2,7 @@ using CompraProgramada.Application.Interfaces;
 using CompraProgramada.Domain;
 using CompraProgramada.Domain.Entities;
 using CompraProgramada.Domain.Enums;
+using CompraProgramada.Domain.Helpers;
 using CompraProgramada.Domain.Interfaces.Repositories;
 using CompraProgramada.Domain.Interfaces.Services;
 using Microsoft.Extensions.Logging;
@@ -108,7 +109,7 @@ public class RebalanceamentoService : IRebalanceamentoService
                     var cotacao = cotacoes.GetValueOrDefault(item.Ticker, 0m);
                     if (cotacao == 0) continue;
 
-                    var quantidade = (int)Math.Truncate(valorParaCompra / cotacao);
+                    var quantidade = MoneyHelper.TruncarQuantidade(valorParaCompra / cotacao);
                     if (quantidade <= 0) continue;
 
                     operacoes.Add(new OperacaoRebalanceamento
@@ -165,7 +166,7 @@ public class RebalanceamentoService : IRebalanceamentoService
                 if (Math.Abs(diferenca) < RegrasFinanceiras.ToleranciaRebalanceamento) continue;
 
                 var valorAlvo = valorAtualTotal * (percentualAlvo / 100m);
-                var quantidadeAlvo = (int)Math.Truncate(valorAlvo / cotacao);
+                var quantidadeAlvo = MoneyHelper.TruncarQuantidade(valorAlvo / cotacao);
                 var ajuste = posicao.Quantidade - quantidadeAlvo;
 
                 if (ajuste > 0)
@@ -327,7 +328,7 @@ public class RebalanceamentoService : IRebalanceamentoService
         decimal valorIR = 0;
         if (totalVendasMes > RegrasFinanceiras.LimiteIsencaoIR && lucroTotalMes > 0)
         {
-            valorIR = Math.Round(lucroTotalMes * RegrasFinanceiras.AliquotaIRVenda, 2);
+            valorIR = MoneyHelper.ArredondarMoeda(lucroTotalMes * RegrasFinanceiras.AliquotaIRVenda);
         }
 
         try

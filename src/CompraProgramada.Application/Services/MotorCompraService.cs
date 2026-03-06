@@ -3,6 +3,7 @@ using CompraProgramada.Application.Interfaces;
 using CompraProgramada.Domain;
 using CompraProgramada.Domain.Entities;
 using CompraProgramada.Domain.Exceptions;
+using CompraProgramada.Domain.Helpers;
 using CompraProgramada.Domain.Interfaces.Repositories;
 using CompraProgramada.Domain.Interfaces.Services;
 using Microsoft.Extensions.Logging;
@@ -110,7 +111,7 @@ public class MotorCompraService : IMotorCompraService
     {
         return clientesAtivos.ToDictionary(
             c => c,
-            c => Math.Round(c.ValorMensal / RegrasFinanceiras.ParcelasPorMes, 2));
+            c => MoneyHelper.ArredondarMoeda(c.ValorMensal / RegrasFinanceiras.ParcelasPorMes));
     }
 
     private async Task<(List<OrdemCompraItem> Itens, Dictionary<string, int> QuantidadesDisponiveis)> CriarOrdensCompraAsync(
@@ -126,7 +127,7 @@ public class MotorCompraService : IMotorCompraService
             var cotacao = cotacoes.GetValueOrDefault(item.Ticker, 0m);
             if (cotacao == 0) continue;
 
-            var quantidadeSemSaldo = (int)Math.Truncate(valorParaAtivo / cotacao);
+            var quantidadeSemSaldo = MoneyHelper.TruncarQuantidade(valorParaAtivo / cotacao);
             var saldoMaster = saldosMaster.FirstOrDefault(s => s.Ticker == item.Ticker);
             var saldoExistente = saldoMaster?.Quantidade ?? 0;
 
@@ -187,12 +188,12 @@ public class MotorCompraService : IMotorCompraService
             foreach (var item in cesta.Itens)
             {
                 var totalDisponivel = quantidadesDisponiveis.GetValueOrDefault(item.Ticker, 0);
-                var quantidadeCliente = (int)Math.Truncate(proporcao * totalDisponivel);
+                var quantidadeCliente = MoneyHelper.TruncarQuantidade(proporcao * totalDisponivel);
                 if (quantidadeCliente <= 0) continue;
 
                 var cotacao = cotacoes.GetValueOrDefault(item.Ticker, 0m);
                 var valorOperacao = quantidadeCliente * cotacao;
-                var irDedoDuro = Math.Round(valorOperacao * RegrasFinanceiras.TaxaIRDedoDuro, 2);
+                var irDedoDuro = MoneyHelper.ArredondarMoeda(valorOperacao * RegrasFinanceiras.TaxaIRDedoDuro);
 
                 await AtualizarCustodiaFilhoteAsync(cliente, item.Ticker, quantidadeCliente, cotacao, valorOperacao);
                 quantidadesDisponiveis[item.Ticker] -= quantidadeCliente;

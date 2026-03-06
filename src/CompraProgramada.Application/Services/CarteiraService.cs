@@ -3,6 +3,7 @@ using CompraProgramada.Application.Interfaces;
 using CompraProgramada.Domain;
 using CompraProgramada.Domain.Entities;
 using CompraProgramada.Domain.Exceptions;
+using CompraProgramada.Domain.Helpers;
 using CompraProgramada.Domain.Interfaces.Repositories;
 using CompraProgramada.Domain.Interfaces.Services;
 
@@ -82,8 +83,8 @@ public class CarteiraService : ICarteiraService
             return new EvolucaoCarteiraResponse
             {
                 Data = h.Data,
-                ValorInvestido = Math.Round(acumuladoInvestido, 2),
-                ValorCarteira = Math.Round(acumuladoInvestido, 2),
+                ValorInvestido = MoneyHelper.ArredondarMoeda(acumuladoInvestido),
+                ValorCarteira = MoneyHelper.ArredondarMoeda(acumuladoInvestido),
                 Rentabilidade = 0
             };
         }).ToList();
@@ -115,17 +116,17 @@ public class CarteiraService : ICarteiraService
             var valorAtual = c.Quantidade * cotacaoAtual;
             var pl = c.Quantidade * (cotacaoAtual - c.PrecoMedio);
             var plPercentual = c.PrecoMedio > 0
-                ? Math.Round((cotacaoAtual - c.PrecoMedio) / c.PrecoMedio * 100, 2)
+                ? MoneyHelper.ArredondarPercentual((cotacaoAtual - c.PrecoMedio) / c.PrecoMedio * 100)
                 : 0m;
 
             return new AtivoCarteiraResponse
             {
                 Ticker = c.Ticker,
                 Quantidade = c.Quantidade,
-                PrecoMedio = Math.Round(c.PrecoMedio, 2),
+                PrecoMedio = MoneyHelper.ArredondarMoeda(c.PrecoMedio),
                 CotacaoAtual = cotacaoAtual,
-                ValorAtual = Math.Round(valorAtual, 2),
-                Pl = Math.Round(pl, 2),
+                ValorAtual = MoneyHelper.ArredondarMoeda(valorAtual),
+                Pl = MoneyHelper.ArredondarMoeda(pl),
                 PlPercentual = plPercentual
             };
         }).ToList();
@@ -134,7 +135,7 @@ public class CarteiraService : ICarteiraService
         foreach (var ativo in ativos)
         {
             ativo.ComposicaoCarteira = valorTotalAtual > 0
-                ? Math.Round(ativo.ValorAtual / valorTotalAtual * 100, 2)
+                ? MoneyHelper.ArredondarPercentual(ativo.ValorAtual / valorTotalAtual * 100)
                 : 0m;
         }
 
@@ -148,14 +149,14 @@ public class CarteiraService : ICarteiraService
         var valorInvestido = custodia.Sum(c => c.ValorInvestido);
         var plTotal = valorTotalAtual - valorInvestido;
         var rentabilidade = valorInvestido > 0
-            ? Math.Round(plTotal / valorInvestido * 100, 2)
+            ? MoneyHelper.ArredondarPercentual(plTotal / valorInvestido * 100)
             : 0m;
 
         return new ResumoCarteiraResponse
         {
-            ValorTotalInvestido = Math.Round(valorInvestido, 2),
-            ValorAtualCarteira = Math.Round(valorTotalAtual, 2),
-            PlTotal = Math.Round(plTotal, 2),
+            ValorTotalInvestido = MoneyHelper.ArredondarMoeda(valorInvestido),
+            ValorAtualCarteira = MoneyHelper.ArredondarMoeda(valorTotalAtual),
+            PlTotal = MoneyHelper.ArredondarMoeda(plTotal),
             RentabilidadePercentual = rentabilidade
         };
     }
