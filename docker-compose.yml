@@ -36,7 +36,10 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_LISTENERS: PLAINTEXT_HOST://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT_HOST://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT_HOST:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
 
@@ -47,7 +50,7 @@ services:
       - "5000:8080"
     environment:
       ConnectionStrings__DefaultConnection: "Server=mysql;Port=3306;Database=compra_programada;User=appuser;Password=apppass123;"
-      Kafka__BootstrapServers: "kafka:9092"
+      Kafka__BootstrapServers: "kafka:29092"
       CotacoesPath: "/app/cotacoes"
     volumes:
       - ./cotacoes:/app/cotacoes
