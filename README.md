@@ -36,7 +36,7 @@ frontend/                            # React SPA (TypeScript + Vite)
 ├── src/pages/                       # Páginas: Adesão, Carteira, Rentabilidade, Admin, Motor
 └── src/components/                  # Layout e navegação
 tests/
-├── CompraProgramada.UnitTests       # 65 testes unitários
+├── CompraProgramada.UnitTests       # 89 testes unitários
 └── CompraProgramada.IntegrationTests # 15 testes de integração
 ```
 
@@ -193,13 +193,18 @@ Aprovado! - Com falha: 0, Aprovado: 80, Total: 80
 ### Arquitetura
 - **Clean Architecture** com separação estrita de dependências: Domain não referencia nenhuma outra camada, Application depende apenas de Domain, Infrastructure implementa interfaces definidas em Domain/Application, e Api orquestra tudo via DI.
 - **Domain-Driven Design (DDD)**: Entidades ricas com comportamento (ex: `Cliente.Desativar()`, `CestaTopFive.Desativar()`, `CustodiaFilhote.AtualizarPrecoMedio()`, `CustodiaFilhote.CalcularLucro()`), em vez de entidades anêmicas.
-- **Repository + Unit of Work**: Cada agregado possui seu repositório com interface no Domain. Transações são controladas via `IUnitOfWork.CommitAsync()`.
+- **Repository + Unit of Work**: Cada agregado possui seu repositório com interface no Domain. Transações são controladas via `IUnitOfWork.CommitAsync()`. Operações críticas usam `IUnitOfWork.ExecuteInTransactionAsync(Func<Task>)` — delegate pattern que mantém o Domain livre de referências ao EF Core.
+- **Segurança de configuração**: `appsettings.json` contém apenas placeholders; valores reais ficam em `appsettings.Development.json` (não comitado). Testes de integração continuam funcionando via `UseEnvironment("Development")`.
 
 ### Motor de Compra
 - A compra é consolidada na **conta master** para depois distribuir, evitando múltiplas ordens pequenas na B3.
 - **Lote padrão** (múltiplos de 100) é priorizado; resíduo vai para o **mercado fracionário** (sufixo F).
-- Distribuição usa `Math.Truncate` (sem arredondamento para cima) — resíduos ficam na custódia master para a próxima execução.
+- Distribuição usa truncamento sem arredondamento (`MoneyHelper.TruncarQuantidade`) — resíduos ficam na custódia master para a próxima execução.
 - Dias de compra (5, 15, 25) e demais constantes financeiras estão centralizadas em `RegrasFinanceiras.cs` para facilitar manutenção.
+- Arredondamento financeiro centralizado em `Domain/Helpers/MoneyHelper.cs` (`ArredondarMoeda`, `ArredondarPercentual`, `TruncarQuantidade`) — elimina `Math.Round`/`Math.Truncate` espalhados e garante comportamento BRL/B3 consistente.
+- **IR sobre vendas**: base de cálculo usa lucro acumulado do mês (`ObterTotalLucroMesAsync`) em vez de apenas o lucro da operação corrente, evitando subcobrança ao cruzar o limite de isenção em operações subsequentes.
+- Ordem de compra e distribuições persistidas atomicamente via `ExecuteInTransactionAsync` — qualquer falha reverte tudo.
+- **CompraScheduler** (`BackgroundService`) dispara às 9h nos dias de compra, calculando dinamicamente o próximo horário sem polling. Usa `IServiceScopeFactory` para resolver `IMediator` em scope por execução.
 
 ### Cotações (COTAHIST)
 - O parser lê arquivos posicionais da B3 (245 caracteres/linha, encoding ISO-8859-1).
@@ -211,6 +216,7 @@ Aprovado! - Com falha: 0, Aprovado: 80, Total: 80
 - **Magic numbers** eliminados via classe `RegrasFinanceiras` (constantes como `ParcelasPorMes`, `TaxaIRDedoDuro`, `LimiteIsencaoIR`, `AliquotaIRVenda`).
 - **Exception handling**: Catches específicos com `ILogger` em vez de catches genéricos silenciosos.
 - **Middleware centralizado** para tratamento de exceções (mapeia `DomainException` para HTTP 400/404/409).
+- **Eventos Kafka tipados e versionados**: records `IrDedoDuroEventV1` / `IrVendaEventV1` com sufixo V1. Payload publicado dentro de envelope padrão (`eventId`, `schemaVersion`, `correlationId`, `timestampUtc`). `partitionKey = clienteId` garante ordem de entrega por cliente.
 
 ### CQRS com MediatR
 - Separação clara entre **Commands** (escrita: adesão, saída, compra, rebalanceamento) e **Queries** (leitura: carteira, rentabilidade, cesta, custódia).
@@ -243,3 +249,4 @@ Application/CQRS/
 - Pipeline `.github/workflows/ci.yml` que executa em push/PR para main/develop.
 - Steps: checkout → setup .NET 8 → restore → build → testes unitários → testes de integração.
 - Testes de integração usam banco InMemory (sem dependência de Docker no CI).
+- `CustomWebApplicationFactory` usa `AppContext.BaseDirectory` como content root, garantindo portabilidade em qualquer máquina e no runner Ubuntu.
